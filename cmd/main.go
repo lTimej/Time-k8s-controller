@@ -50,7 +50,7 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
-const WatchedNamespace = "k8stest"
+const WatchedNamespace = "k8s-test"
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))

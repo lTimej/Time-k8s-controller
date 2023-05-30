@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const ModeRelease = "release"
+const ModeRelease = "development"
 
 var (
 	ResponseSuccess = &pb.Response{Status: 200, Message: "success"}
@@ -43,7 +43,7 @@ var podTpl = &v1.Pod{
 	},
 	ObjectMeta: metav1.ObjectMeta{
 		Labels: map[string]string{
-			"kind": "k8stest",
+			"kind": "k8s-test",
 		},
 	},
 }
@@ -93,7 +93,7 @@ func (ss *SpaceService) CreatePVC(name, namespace, storage string) (*v1.Persiste
 		fmt.Println(err)
 		return nil, err
 	}
-	storage_class_name := "nfs-storage"
+	storage_class_name := "nfs-client"
 	pvc := &v1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -125,6 +125,7 @@ func (ss *SpaceService) CreatePVC(name, namespace, storage string) (*v1.Persiste
 func (ss *SpaceService) CreatePod(c context.Context, info *pb.WorkspaceInfo) (*pb.WorkspaceRunningInfo, error) {
 	pod := podTpl.DeepCopy()
 	ss.fillPod(info, pod, info.Name)
+	fmt.Println("11111111")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	err := ss.Client.Create(ctx, pod)
@@ -156,6 +157,7 @@ func (ss *SpaceService) CreatePod(c context.Context, info *pb.WorkspaceInfo) (*p
 	}
 	klog.Info("[createPod] create pod success")
 	ch := ss.StatusInformer.Add(pod.Name)
+	fmt.Println("333333333333333", ch)
 	defer ss.StatusInformer.Delete(pod.Name)
 	select {
 	case <-ch:
@@ -227,8 +229,8 @@ func (ss *SpaceService) fillPod(info *pb.WorkspaceInfo, pod *v1.Pod, pvc string)
 			},
 		},
 	}
-	if ModeRelease == Mode {
-		fmt.Println("============resource=============")
+	if ModeRelease == "" {
+		fmt.Println("============resource=======111======", Mode, "--", ModeRelease)
 		pod.Spec.Containers[0].Resources = v1.ResourceRequirements{
 			Requests: map[v1.ResourceName]resource.Quantity{
 				v1.ResourceCPU:    resource.MustParse("2"),
@@ -262,6 +264,7 @@ func (ss *SpaceService) deletePod(pod *v1.Pod) (*pb.Response, error) {
 
 func (ss *SpaceService) GetPodSpaceInfo(ctx context.Context, option *pb.QueryOption) (*pb.WorkspaceRunningInfo, error) {
 	pod := v1.Pod{}
+	fmt.Println("2222222222")
 	err := ss.Client.Get(ctx, client.ObjectKey{Name: option.Name, Namespace: option.Namespace}, &pod)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -271,6 +274,7 @@ func (ss *SpaceService) GetPodSpaceInfo(ctx context.Context, option *pb.QueryOpt
 		klog.Errorf("get pod space info error:%v", err)
 		return EmptyWorkspaceRunningInfo, status.Error(codes.Unknown, err.Error())
 	}
+	fmt.Println("3333333333")
 	return &pb.WorkspaceRunningInfo{
 		NodeName: pod.Spec.NodeName,
 		Ip:       pod.Status.PodIP,
@@ -320,9 +324,11 @@ func (ss *SpaceService) StopSpace(ctx context.Context, option *pb.QueryOption) (
 
 func (ss *SpaceService) GetPodSpaceStatus(ctx context.Context, option *pb.QueryOption) (*pb.WorkspaceStatus, error) {
 	pod := v1.Pod{}
+	fmt.Println(option.Name, option.Namespace, "444444444")
 	err := ss.Client.Get(ctx, client.ObjectKey{Name: option.Name, Namespace: option.Namespace}, &pod)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			fmt.Println(err, "------")
 			return EmptyWorkspaceStatus, status.Error(codes.NotFound, "pod not found")
 		}
 
